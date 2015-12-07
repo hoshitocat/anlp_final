@@ -3,7 +3,16 @@ package main
 import (
 	"log"
 	"errors"
+	"os"
+	"bufio"
+	"strings"
 )
+
+const TRAIN_DATA = "train_datas/neko.num"
+const TRAIN_DATA_DIC = "train_datas/neko.dic.txt"
+
+var data []string
+var dataDic map[string]int
 
 type Model struct {
 	Word string
@@ -18,13 +27,14 @@ type Estimater struct {
 	Models []Model
 }
 
-func (self *Estimater) Initialize(words ...string) *Estimater {
+func NewEstimater(words ...string) *Estimater {
 	typeNgram, err := ngram(len(words))
-	if err != nil { log.Errorf(err) }
-	estimater := &Estimater{ TypeNgram: typeNgram, , nil }
+	if err != nil { log.Fatal(err) }
+	estimater := &Estimater{ TypeNgram: typeNgram, TargetWords: words, Models: nil }
+	return estimater
 }
 
-func ngram(n int) string, error {
+func ngram(n int) (string, error) {
 	switch n {
 	case 0:
 		return "unigram", nil
@@ -37,8 +47,33 @@ func ngram(n int) string, error {
 	}
 }
 
+func loadDic() {
+	f, err := os.Open(TRAIN_DATA_DIC)
+	if err != nil { log.Fatal(err) }
+
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.Split(scanner.Text(), "	")
+		dataDic[line[1]] = line[0]
+	}
+
+	log.Println(dataDic)
+
+	if err = scanner.Err(); err != nil { log.Fatal(err) }
+}
+
+func loadData() {
+}
+
+func init() {
+	loadDic()
+	loadData()
+}
+
 func main() {
-	unigramEstimater := &Estimater{"unigram", nil, nil}
-	log.Println(unigramEstimater.Type)
+	unigramEstimater := NewEstimater()
+	log.Println(unigramEstimater)
 }
 
