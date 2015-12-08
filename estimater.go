@@ -48,6 +48,20 @@ func appearCount(wordIndex int) (int, []int) {
 	return sum, indexes
 }
 
+func appearCountForTrigram(indexW1 int, indexW2 int) (int, []int) {
+	sum := 0
+	indexes := make([]int, 0)
+	for k, v := range data {
+		if v == indexW1 {
+			if (k + 1) < len(data) && data[k + 1] == indexW2 {
+				sum++
+				indexes = append(indexes, k + 1)
+			}
+		}
+	}
+	return sum, indexes
+}
+
 func appearCountAfterWords(wordIndex int, indexes []int) int {
 	sum := 0
 	for _, index := range indexes {
@@ -107,7 +121,25 @@ func calcBigram(w string) []Model {
 }
 
 func calcTrigram(w1 string, w2 string) []Model {
-	models := make([]Model, len(dataDic))
+	models := make([]Model, 0)
+	sum, indexes := appearCountForTrigram(dataDic[w1], dataDic[w2])
+	absDiscount := make(map[int]float64)
+
+	for key, val := range dataDic {
+		count := appearCountAfterWords(val, indexes)
+		model := Model{ Word: key, Index: val, Count: count, Prob: 0 }
+		models = append(models, model)
+	}
+
+	for i, model := range models {
+		if model.Count == 0 {
+			models[i].Prob = float64(0)
+			continue
+		}
+		if _, ok := absDiscount[model.Count]; !ok { absDiscount[model.Count] = calcAbsDiscount(model.Count, models) }
+		models[i].Prob = (float64(model.Count) - absDiscount[model.Count]) / float64(sum)
+	}
+
 	return models
 }
 
@@ -199,7 +231,7 @@ func modelWrite(models Models) {
 		content += fmt.Sprintf("%20.17e\n", model.Prob)
 	}
 
-	ioutil.WriteFile(BIGRAM_MODEL_PATH, []byte(content), os.ModePerm)
+	ioutil.WriteFile(TRIGRAM_MODEL_PATH, []byte(content), os.ModePerm)
 }
 // NOTE: ここまで
 
@@ -231,17 +263,14 @@ func main() {
 	bigramEstimater, err := NewEstimater("て")
 	if err != nil { log.Fatal(err) }
 
-	backOff(bigramEstimater.Models, unigramEstimater.Models)
+	trigramEstimater, err := NewEstimater("し", "て")
+	if err != nil { log.Fatal(err) }
 
-	sort.Sort(bigramEstimater.Models)
-	modelWrite(bigramEstimater.Models)
 
-	// log.Println(bigramEstimater.Models)
-	// log.Println(bigramEstimater.TypeNgram)
-	// sum := 0.0
-	// for _, model := range bigramEstimater.Models {
-	// 	sum += model.Prob
-	// }
-	// log.Println(sum)
+	backOff(trigramEstimater.Models, bigramEstimater.Models)
+	backOff(trigramEstimater.Models, unigramEstimater.Models)
+
+	sort.Sort(trigramEstimater.Models)
+	modelWrite(trigramEstimater.Models)
 }
 
